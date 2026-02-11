@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sanit-Eticket</title>
+</head>
+<body>
+
+<h2>Nouvelle production</h2>
+
+<input id="designation" placeholder="Désignation"><br><br>
+<input id="poids" placeholder="Poids (kg)"><br><br>
+<input id="dlc" type="number" placeholder="DLC (jours)"><br><br>
+<input id="operateur" placeholder="Initiales"><br><br>
+
+<button onclick="saveProduction()">Enregistrer</button>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyAL76ws_htNLwAfwvebVX9YPfqtawKUTTk",
+    authDomain: "sanit-eticket.firebaseapp.com",
+    projectId: "sanit-eticket",
+    storageBucket: "sanit-eticket.firebasestorage.app",
+    messagingSenderId: "819999183475",
+    appId: "1:819999183475:web:becb59ecfb8e7ac185d006",
+    measurementId: "G-9B4TJPGJJL"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
+
+function saveProduction() {
+
+  const designation = document.getElementById("designation").value;
+  const poids = document.getElementById("poids").value;
+  const dlcDays = parseInt(document.getElementById("dlc").value);
+  const operateur = document.getElementById("operateur").value;
+
+  const today = new Date();
+  const dlcDate = new Date();
+  dlcDate.setDate(today.getDate() + dlcDays);
+
+  const lot = designation.substring(0,3).toUpperCase() +
+              today.getDate() +
+              (today.getMonth()+1) +
+              today.getFullYear();
+
+  db.collection("productions").add({
+    designation: designation,
+    poids: poids,
+    dateFabrication: today,
+    dateDLC: dlcDate,
+    operateur: operateur,
+    lot: lot
+  });
+
+  alert("Production enregistrée !");
+}
+
+</script>
+
+</body>
+</html>
