@@ -1,80 +1,85 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Sanit-Eticket</title>
+    <meta charset="UTF-8">
+    <title>Sanit-Eticket</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        input { margin-bottom: 10px; width: 200px; padding: 5px; }
+        button { padding: 10px 20px; background-color: #007bff; color: white; border: none; cursor: pointer; }
+    </style>
 </head>
 <body>
 
-<h2>Nouvelle production</h2>
+    <h2>Nouvelle production</h2>
 
-<input id="designation" placeholder="Désignation"><br><br>
-<input id="poids" placeholder="Poids (kg)"><br><br>
-<input id="dlc" type="number" placeholder="DLC (jours)"><br><br>
-<input id="operateur" placeholder="Initiales"><br><br>
+    <input id="designation" placeholder="Désignation"><br>
+    <input id="poids" placeholder="Poids (kg)"><br>
+    <input id="dlc" type="number" placeholder="DLC (jours)"><br>
+    <input id="operateur" placeholder="Initiales"><br><br>
 
-<button onclick="saveProduction()">Enregistrer</button>
+    <button onclick="saveProduction()">Enregistrer</button>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-<script>
-  // Ta configuration Firebase
-  const firebaseConfig = {
-    apiKey: "AIzaSyAL76ws_htNLwAfwvebVX9YPfqtawKUTTk",
-    authDomain: "sanit-eticket.firebaseapp.com",
-    projectId: "sanit-eticket",
-    storageBucket: "sanit-eticket.firebasestorage.app",
-    messagingSenderId: "819999183475",
-    appId: "1:819999183475:web:becb59ecfb8e7ac185d006",
-    measurementId: "G-9B4TJPGJJL"
-  };
+    <script>
+        // Ta configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAL76ws_htNLwAfwvebVX9YPfqtawKUTTk",
+            authDomain: "sanit-eticket.firebaseapp.com",
+            projectId: "sanit-eticket",
+            storageBucket: "sanit-eticket.firebasestorage.app",
+            messagingSenderId: "819999183475",
+            appId: "1:819999183475:web:becb59ecfb8e7ac185d006"
+        };
 
-  // Initialisation de Firebase
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
+        // Initialisation
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-  function saveProduction() {
-    const designation = document.getElementById("designation").value;
-    const poids = document.getElementById("poids").value;
-    const dlcDays = parseInt(document.getElementById("dlc").value);
-    const operateur = document.getElementById("operateur").value;
+        function saveProduction() {
+            const designation = document.getElementById("designation").value;
+            const poids = document.getElementById("poids").value;
+            const dlcDays = parseInt(document.getElementById("dlc").value);
+            const operateur = document.getElementById("operateur").value;
 
-    if (!designation || !poids || isNaN(dlcDays)) {
-        alert("Veuillez remplir tous les champs correctement.");
-        return;
-    }
+            // Vérification si les champs sont vides
+            if(!designation || !poids || isNaN(dlcDays)) {
+                alert("Remplis tous les champs avant de valider !");
+                return;
+            }
 
-    const today = new Date();
-    const dlcDate = new Date();
-    dlcDate.setDate(today.getDate() + dlcDays);
+            const today = new Date();
+            const dlcDate = new Date();
+            dlcDate.setDate(today.getDate() + dlcDays);
 
-    const lot = designation.substring(0,3).toUpperCase() + 
-                today.getDate() + 
-                (today.getMonth()+1) + 
-                today.getFullYear();
+            const lot = designation.substring(0,3).toUpperCase() + 
+                        today.getDate() + 
+                        (today.getMonth()+1) + 
+                        today.getFullYear();
 
-    // Envoi vers Firestore
-    db.collection("productions").add({
-      designation: designation,
-      poids: poids,
-      dateFabrication: today,
-      dateDLC: dlcDate,
-      operateur: operateur,
-      lot: lot
-    })
-    .then(() => {
-      alert("Production enregistrée avec succès !");
-      // Optionnel : vider les champs après l'enregistrement
-      document.getElementById("designation").value = "";
-      document.getElementById("poids").value = "";
-    })
-    .catch((error) => {
-      console.error("Erreur Firebase : ", error);
-      alert("Erreur : " + error.message);
-    });
-  }
-</script>
+            // Envoi à la base de données
+            db.collection("productions").add({
+                designation: designation,
+                poids: poids,
+                dateFabrication: today,
+                dateDLC: dlcDate,
+                operateur: operateur,
+                lot: lot
+            })
+            .then(() => {
+                alert("Production enregistrée avec succès !");
+                // On vide le formulaire
+                document.getElementById("designation").value = "";
+                document.getElementById("poids").value = "";
+            })
+            .catch((error) => {
+                console.error("Erreur : ", error);
+                alert("Erreur lors de l'enregistrement. Vérifie tes règles Firestore.");
+            });
+        }
+    </script>
 
 </body>
 </html>
