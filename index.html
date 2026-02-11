@@ -2,84 +2,102 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Sanit-Eticket</title>
+    <title>Sanit-Eticket - Générateur</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; }
-        input { margin-bottom: 10px; width: 200px; padding: 5px; }
-        button { padding: 10px 20px; background-color: #007bff; color: white; border: none; cursor: pointer; }
+        body { font-family: 'Courier New', Courier, monospace; padding: 20px; background: #f4f4f4; }
+        .form-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        input { display: block; margin-bottom: 10px; width: 100%; max-width: 300px; padding: 8px; border: 1px solid #ddd; }
+        button { padding: 10px 20px; background-color: #27ae60; color: white; border: none; cursor: pointer; font-weight: bold; }
+        
+        /* Style de l'étiquette */
+        #etiquette-print { 
+            display: none; /* Caché par défaut */
+            background: white; width: 300px; border: 2px solid black; padding: 15px; text-align: center;
+        }
+        .etiquette-header { border-bottom: 2px solid black; margin-bottom: 10px; font-weight: bold; font-size: 1.2em; }
+        .lot { font-size: 1.5em; font-weight: bold; margin: 10px 0; background: #000; color: #fff; }
+        .dlc { color: red; font-weight: bold; font-size: 1.1em; }
+        
+        @media print {
+            body * { visibility: hidden; }
+            #etiquette-print, #etiquette-print * { visibility: visible; }
+            #etiquette-print { position: absolute; left: 0; top: 0; display: block; }
+        }
     </style>
 </head>
 <body>
 
-    <h2>Nouvelle production</h2>
+<div class="form-container">
+    <h2>Générer une étiquette</h2>
+    <input id="designation" placeholder="Désignation (ex: Jambon)">
+    <input id="poids" placeholder="Poids (kg)">
+    <input id="dlc" type="number" placeholder="DLC (nombre de jours)">
+    <input id="operateur" placeholder="Initiales Opérateur">
+    <button onclick="saveProduction()">Générer & Enregistrer</button>
+</div>
 
-    <input id="designation" placeholder="Désignation"><br>
-    <input id="poids" placeholder="Poids (kg)"><br>
-    <input id="dlc" type="number" placeholder="DLC (jours)"><br>
-    <input id="operateur" placeholder="Initiales"><br><br>
+<div id="etiquette-print">
+    <div class="etiquette-header">SANIT-ETICKET</div>
+    <div id="view-designation" style="text-transform: uppercase; font-size: 1.3em;"></div>
+    <div class="lot" id="view-lot"></div>
+    <p>Poids : <span id="view-poids"></span> kg</p>
+    <p class="dlc">DLC : <span id="view-dlc"></span></p>
+    <p style="font-size: 0.8em;">Opérateur : <span id="view-operateur"></span></p>
+    <button onclick="window.print()" style="background: #333; font-size: 0.7em;">Imprimer</button>
+</div>
 
-    <button onclick="saveProduction()">Enregistrer</button>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyAL76ws_htNLwAfwvebVX9YPfqtawKUTTk",
+        authDomain: "sanit-eticket.firebaseapp.com",
+        projectId: "sanit-eticket",
+        storageBucket: "sanit-eticket.firebasestorage.app",
+        messagingSenderId: "819999183475",
+        appId: "1:819999183475:web:becb59ecfb8e7ac185d006"
+    };
 
-    <script>
-        // Ta configuration Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyAL76ws_htNLwAfwvebVX9YPfqtawKUTTk",
-            authDomain: "sanit-eticket.firebaseapp.com",
-            projectId: "sanit-eticket",
-            storageBucket: "sanit-eticket.firebasestorage.app",
-            messagingSenderId: "819999183475",
-            appId: "1:819999183475:web:becb59ecfb8e7ac185d006"
-        };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-        // Initialisation
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+    function saveProduction() {
+        const designation = document.getElementById("designation").value;
+        const poids = document.getElementById("poids").value;
+        const dlcDays = parseInt(document.getElementById("dlc").value);
+        const operateur = document.getElementById("operateur").value;
 
-        function saveProduction() {
-            const designation = document.getElementById("designation").value;
-            const poids = document.getElementById("poids").value;
-            const dlcDays = parseInt(document.getElementById("dlc").value);
-            const operateur = document.getElementById("operateur").value;
-
-            // Vérification si les champs sont vides
-            if(!designation || !poids || isNaN(dlcDays)) {
-                alert("Remplis tous les champs avant de valider !");
-                return;
-            }
-
-            const today = new Date();
-            const dlcDate = new Date();
-            dlcDate.setDate(today.getDate() + dlcDays);
-
-            const lot = designation.substring(0,3).toUpperCase() + 
-                        today.getDate() + 
-                        (today.getMonth()+1) + 
-                        today.getFullYear();
-
-            // Envoi à la base de données
-            db.collection("productions").add({
-                designation: designation,
-                poids: poids,
-                dateFabrication: today,
-                dateDLC: dlcDate,
-                operateur: operateur,
-                lot: lot
-            })
-            .then(() => {
-                alert("Production enregistrée avec succès !");
-                // On vide le formulaire
-                document.getElementById("designation").value = "";
-                document.getElementById("poids").value = "";
-            })
-            .catch((error) => {
-                console.error("Erreur : ", error);
-                alert("Erreur lors de l'enregistrement. Vérifie tes règles Firestore.");
-            });
+        if(!designation || !poids || isNaN(dlcDays)) {
+            alert("Remplis tout !"); return;
         }
-    </script>
+
+        const today = new Date();
+        const dlcDate = new Date();
+        dlcDate.setDate(today.getDate() + dlcDays);
+
+        // Formatage de la date pour l'affichage (JJ/MM/AAAA)
+        const dlcString = dlcDate.toLocaleDateString('fr-FR');
+
+        // Génération du LOT (3 lettres + jour + mois)
+        const lot = designation.substring(0,3).toUpperCase() + today.getDate() + (today.getMonth()+1);
+
+        // 1. Mise à jour de l'aperçu visuel
+        document.getElementById("view-designation").innerText = designation;
+        document.getElementById("view-poids").innerText = poids;
+        document.getElementById("view-dlc").innerText = dlcString;
+        document.getElementById("view-lot").innerText = "LOT : " + lot;
+        document.getElementById("view-operateur").innerText = operateur;
+        document.getElementById("etiquette-print").style.display = "block";
+
+        // 2. Enregistrement Firebase
+        db.collection("productions").add({
+            designation, poids, dateFabrication: today, dateDLC: dlcDate, operateur, lot
+        }).then(() => {
+            console.log("Enregistré dans le cloud !");
+        });
+    }
+</script>
 
 </body>
 </html>
