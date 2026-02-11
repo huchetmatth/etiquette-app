@@ -2,48 +2,69 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Sanit-Eticket - Générateur</title>
+    <title>Sanit-Eticket - Code-Barres</title>
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Courier New', Courier, monospace; padding: 20px; background: #f4f4f4; }
-        .form-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        input { display: block; margin-bottom: 10px; width: 100%; max-width: 300px; padding: 8px; border: 1px solid #ddd; }
-        button { padding: 10px 20px; background-color: #27ae60; color: white; border: none; cursor: pointer; font-weight: bold; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #f0f2f5; color: #333; }
+        .form-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 30px; max-width: 400px; }
+        h2 { margin-top: 0; color: #1a73e8; }
+        input { display: block; margin-bottom: 15px; width: calc(100% - 20px); padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
+        button { width: 100%; padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        button:hover { background-color: #218838; }
         
-        /* Style de l'étiquette */
+        /* Style de l'étiquette pro */
         #etiquette-print { 
-            display: none; /* Caché par défaut */
-            background: white; width: 300px; border: 2px solid black; padding: 15px; text-align: center;
+            display: none; 
+            background: white; width: 350px; border: 2px solid #000; padding: 20px; text-align: center; margin-top: 20px;
         }
-        .etiquette-header { border-bottom: 2px solid black; margin-bottom: 10px; font-weight: bold; font-size: 1.2em; }
-        .lot { font-size: 1.5em; font-weight: bold; margin: 10px 0; background: #000; color: #fff; }
-        .dlc { color: red; font-weight: bold; font-size: 1.1em; }
+        .etiquette-header { border-bottom: 3px solid #000; margin-bottom: 10px; font-weight: 900; font-size: 1.4em; letter-spacing: 2px; }
+        .lot-box { font-size: 1.2em; font-weight: bold; margin: 10px 0; border: 1px solid #000; padding: 5px; }
+        .dlc-zone { color: #d9534f; font-weight: bold; font-size: 1.3em; margin: 10px 0; }
         
+        /* Zone Code-Barres */
+        .barcode { 
+            font-family: 'Libre Barcode 128', crossorigin; 
+            font-size: 60px; 
+            margin-top: 10px;
+            line-height: 1;
+        }
+
         @media print {
             body * { visibility: hidden; }
             #etiquette-print, #etiquette-print * { visibility: visible; }
-            #etiquette-print { position: absolute; left: 0; top: 0; display: block; }
+            #etiquette-print { position: absolute; left: 0; top: 0; display: block; border: none; }
+            .btn-print { display: none; } /* Cache le bouton imprimer sur le papier */
         }
     </style>
 </head>
 <body>
 
 <div class="form-container">
-    <h2>Générer une étiquette</h2>
-    <input id="designation" placeholder="Désignation (ex: Jambon)">
-    <input id="poids" placeholder="Poids (kg)">
-    <input id="dlc" type="number" placeholder="DLC (nombre de jours)">
-    <input id="operateur" placeholder="Initiales Opérateur">
-    <button onclick="saveProduction()">Générer & Enregistrer</button>
+    <h2>Nouvelle Étiquette</h2>
+    <input id="designation" placeholder="Produit (ex: SAUCE TOMATE)">
+    <input id="poids" placeholder="Poids net (kg)">
+    <input id="dlc" type="number" placeholder="DLC (en jours)">
+    <input id="operateur" placeholder="Initiale Opérateur">
+    <button onclick="saveProduction()">GÉNÉRER L'ÉTIQUETTE</button>
 </div>
 
 <div id="etiquette-print">
-    <div class="etiquette-header">SANIT-ETICKET</div>
-    <div id="view-designation" style="text-transform: uppercase; font-size: 1.3em;"></div>
-    <div class="lot" id="view-lot"></div>
-    <p>Poids : <span id="view-poids"></span> kg</p>
-    <p class="dlc">DLC : <span id="view-dlc"></span></p>
-    <p style="font-size: 0.8em;">Opérateur : <span id="view-operateur"></span></p>
-    <button onclick="window.print()" style="background: #333; font-size: 0.7em;">Imprimer</button>
+    <div class="etiquette-header">TRAÇABILITÉ CUISINE</div>
+    
+    <div id="view-designation" style="text-transform: uppercase; font-size: 1.5em; font-weight: bold;"></div>
+    
+    <div class="lot-box" id="view-lot"></div>
+    
+    <div class="barcode" id="view-barcode"></div>
+    
+    <p>Poids : <span id="view-poids" style="font-weight: bold;"></span> kg</p>
+    <div class="dlc-zone">À CONSOMMER AVANT LE : <br><span id="view-dlc"></span></div>
+    
+    <p style="font-size: 0.9em; border-top: 1px solid #eee; padding-top: 10px;">
+        Fait le : <span id="view-date-fait"></span> par <span id="view-operateur" style="font-weight: bold;"></span>
+    </p>
+
+    <button class="btn-print" onclick="window.print()" style="background: #555; margin-top: 10px;">🖨️ IMPRIMER L'ÉTIQUETTE</button>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -69,33 +90,34 @@
         const operateur = document.getElementById("operateur").value;
 
         if(!designation || !poids || isNaN(dlcDays)) {
-            alert("Remplis tout !"); return;
+            alert("⚠️ Erreur : Remplis tous les champs."); return;
         }
 
         const today = new Date();
         const dlcDate = new Date();
         dlcDate.setDate(today.getDate() + dlcDays);
 
-        // Formatage de la date pour l'affichage (JJ/MM/AAAA)
         const dlcString = dlcDate.toLocaleDateString('fr-FR');
+        const faitLeString = today.toLocaleDateString('fr-FR');
 
-        // Génération du LOT (3 lettres + jour + mois)
-        const lot = designation.substring(0,3).toUpperCase() + today.getDate() + (today.getMonth()+1);
+        // Génération du LOT unique (Ex: JAMB1102)
+        const lot = designation.substring(0,4).toUpperCase() + today.getDate() + (today.getMonth()+1);
 
-        // 1. Mise à jour de l'aperçu visuel
+        // --- Mise à jour de l'affichage ---
         document.getElementById("view-designation").innerText = designation;
         document.getElementById("view-poids").innerText = poids;
         document.getElementById("view-dlc").innerText = dlcString;
         document.getElementById("view-lot").innerText = "LOT : " + lot;
+        document.getElementById("view-barcode").innerText = lot; // On écrit le lot avec la police code-barres
         document.getElementById("view-operateur").innerText = operateur;
+        document.getElementById("view-date-fait").innerText = faitLeString;
+        
         document.getElementById("etiquette-print").style.display = "block";
 
-        // 2. Enregistrement Firebase
+        // --- Envoi Firebase ---
         db.collection("productions").add({
             designation, poids, dateFabrication: today, dateDLC: dlcDate, operateur, lot
-        }).then(() => {
-            console.log("Enregistré dans le cloud !");
-        });
+        }).catch(err => alert("Erreur base de données : " + err));
     }
 </script>
 
