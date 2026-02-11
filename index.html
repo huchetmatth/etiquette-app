@@ -2,69 +2,47 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Sanit-Eticket - Code-Barres</title>
-    <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap" rel="stylesheet">
+    <title>Sanit-Eticket - Liaison Stock</title>
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+EAN13+Text&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #f0f2f5; color: #333; }
-        .form-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 30px; max-width: 400px; }
-        h2 { margin-top: 0; color: #1a73e8; }
-        input { display: block; margin-bottom: 15px; width: calc(100% - 20px); padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
-        button { width: 100%; padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; }
-        button:hover { background-color: #218838; }
+        body { font-family: sans-serif; padding: 20px; background: #f4f7f6; display: flex; flex-direction: column; align-items: center; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        select, input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
+        button { width: 100%; padding: 15px; background: #27ae60; color: white; border: none; font-weight: bold; cursor: pointer; }
         
-        /* Style de l'étiquette pro */
-        #etiquette-print { 
-            display: none; 
-            background: white; width: 350px; border: 2px solid #000; padding: 20px; text-align: center; margin-top: 20px;
-        }
-        .etiquette-header { border-bottom: 3px solid #000; margin-bottom: 10px; font-weight: 900; font-size: 1.4em; letter-spacing: 2px; }
-        .lot-box { font-size: 1.2em; font-weight: bold; margin: 10px 0; border: 1px solid #000; padding: 5px; }
-        .dlc-zone { color: #d9534f; font-weight: bold; font-size: 1.3em; margin: 10px 0; }
-        
-        /* Zone Code-Barres */
-        .barcode { 
-            font-family: 'Libre Barcode 128', crossorigin; 
-            font-size: 60px; 
-            margin-top: 10px;
-            line-height: 1;
-        }
-
-        @media print {
-            body * { visibility: hidden; }
-            #etiquette-print, #etiquette-print * { visibility: visible; }
-            #etiquette-print { position: absolute; left: 0; top: 0; display: block; border: none; }
-            .btn-print { display: none; } /* Cache le bouton imprimer sur le papier */
-        }
+        /* Étiquette */
+        #etiquette-section { display: none; margin-top: 20px; background: white; border: 2px solid black; padding: 15px; width: 300px; text-align: center; }
+        .barcode { font-family: 'Libre Barcode EAN13 Text'; font-size: 75px; }
     </style>
 </head>
 <body>
 
-<div class="form-container">
-    <h2>Nouvelle Étiquette</h2>
-    <input id="designation" placeholder="Produit (ex: SAUCE TOMATE)">
+<div class="card">
+    <h2>Générer Étiquette Stock</h2>
+    
+    <label>Sélectionner le produit :</label>
+    <select id="select-produit" onchange="updateEAN()">
+        <option value="">-- Charger les produits... --</option>
+    </select>
+
     <input id="poids" placeholder="Poids net (kg)">
-    <input id="dlc" type="number" placeholder="DLC (en jours)">
-    <input id="operateur" placeholder="Initiale Opérateur">
-    <button onclick="saveProduction()">GÉNÉRER L'ÉTIQUETTE</button>
+    <input id="dlc" type="number" placeholder="DLC (jours)">
+    <input id="operateur" placeholder="Initiales">
+    
+    <button onclick="genererEtiquette()">VALIDER & ENREGISTRER</button>
 </div>
 
-<div id="etiquette-print">
-    <div class="etiquette-header">TRAÇABILITÉ CUISINE</div>
-    
-    <div id="view-designation" style="text-transform: uppercase; font-size: 1.5em; font-weight: bold;"></div>
-    
-    <div class="lot-box" id="view-lot"></div>
-    
-    <div class="barcode" id="view-barcode"></div>
-    
-    <p>Poids : <span id="view-poids" style="font-weight: bold;"></span> kg</p>
-    <div class="dlc-zone">À CONSOMMER AVANT LE : <br><span id="view-dlc"></span></div>
-    
-    <p style="font-size: 0.9em; border-top: 1px solid #eee; padding-top: 10px;">
-        Fait le : <span id="view-date-fait"></span> par <span id="view-operateur" style="font-weight: bold;"></span>
-    </p>
-
-    <button class="btn-print" onclick="window.print()" style="background: #555; margin-top: 10px;">🖨️ IMPRIMER L'ÉTIQUETTE</button>
+<div id="etiquette-section">
+    <div id="view-nom" style="font-weight: bold; font-size: 1.2em;"></div>
+    <div id="view-barcode" class="barcode"></div>
+    <div id="view-ean-text" style="margin-top:-10px; font-family: monospace;"></div>
+    <div style="text-align: left; margin-top: 10px; font-size: 0.9em;">
+        <div>LOT : <span id="view-lot"></span></div>
+        <div>POIDS : <span id="view-poids"></span> kg</div>
+        <div style="background: black; color: white; padding: 5px; margin-top: 5px;">
+            DLC : <span id="view-dlc"></span>
+        </div>
+    </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -83,43 +61,66 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    function saveProduction() {
-        const designation = document.getElementById("designation").value;
+    // 1. CHARGER LES PRODUITS DEPUIS FIREBASE AU DÉMARRAGE
+    function chargerReferentiel() {
+        const select = document.getElementById("select-produit");
+        
+        // On va chercher dans la collection "produits_referentiel"
+        db.collection("produits_referentiel").get().then((querySnapshot) => {
+            select.innerHTML = '<option value="">-- Choisir un produit --</option>';
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                let opt = document.createElement('option');
+                opt.value = data.ean13; // On stocke l'EAN dans la valeur
+                opt.innerHTML = data.nom;
+                opt.dataset.dlc = data.dlc_par_defaut || 3; // On peut stocker la DLC par défaut
+                select.appendChild(opt);
+            });
+        });
+    }
+
+    function updateEAN() {
+        const select = document.getElementById("select-produit");
+        const selectedOption = select.options[select.selectedIndex];
+        if(selectedOption.dataset.dlc) {
+            document.getElementById("dlc").value = selectedOption.dataset.dlc;
+        }
+    }
+
+    function genererEtiquette() {
+        const select = document.getElementById("select-produit");
+        const eanStock = select.value;
+        const nomProduit = select.options[select.selectedIndex].text;
         const poids = document.getElementById("poids").value;
         const dlcDays = parseInt(document.getElementById("dlc").value);
-        const operateur = document.getElementById("operateur").value;
-
-        if(!designation || !poids || isNaN(dlcDays)) {
-            alert("⚠️ Erreur : Remplis tous les champs."); return;
-        }
-
-        const today = new Date();
-        const dlcDate = new Date();
-        dlcDate.setDate(today.getDate() + dlcDays);
-
-        const dlcString = dlcDate.toLocaleDateString('fr-FR');
-        const faitLeString = today.toLocaleDateString('fr-FR');
-
-        // Génération du LOT unique (Ex: JAMB1102)
-        const lot = designation.substring(0,4).toUpperCase() + today.getDate() + (today.getMonth()+1);
-
-        // --- Mise à jour de l'affichage ---
-        document.getElementById("view-designation").innerText = designation;
-        document.getElementById("view-poids").innerText = poids;
-        document.getElementById("view-dlc").innerText = dlcString;
-        document.getElementById("view-lot").innerText = "LOT : " + lot;
-        document.getElementById("view-barcode").innerText = lot; // On écrit le lot avec la police code-barres
-        document.getElementById("view-operateur").innerText = operateur;
-        document.getElementById("view-date-fait").innerText = faitLeString;
         
-        document.getElementById("etiquette-print").style.display = "block";
+        if(!eanStock) return alert("Sélectionne un produit !");
 
-        // --- Envoi Firebase ---
+        const dateDLC = new Date();
+        dateDLC.setDate(dateDLC.getDate() + dlcDays);
+
+        const lot = nomProduit.substring(0,3).toUpperCase() + new Date().getDate() + (new Date().getMonth()+1);
+
+        // Affichage
+        document.getElementById("view-nom").innerText = nomProduit;
+        document.getElementById("view-barcode").innerText = eanStock;
+        document.getElementById("view-ean-text").innerText = eanStock;
+        document.getElementById("view-lot").innerText = lot;
+        document.getElementById("view-poids").innerText = poids;
+        document.getElementById("view-dlc").innerText = dateDLC.toLocaleDateString('fr-FR');
+        document.getElementById("etiquette-section").style.display = "block";
+
+        // Enregistrement de la production (mouvement de stock)
         db.collection("productions").add({
-            designation, poids, dateFabrication: today, dateDLC: dlcDate, operateur, lot
-        }).catch(err => alert("Erreur base de données : " + err));
+            produit: nomProduit,
+            ean13: eanStock,
+            poids: poids,
+            date: new Date(),
+            dlc: dateDLC
+        });
     }
-</script>
 
+    chargerReferentiel();
+</script>
 </body>
 </html>
