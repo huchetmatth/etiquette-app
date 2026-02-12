@@ -2,48 +2,63 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Sanit-Eticket - Liaison Stock</title>
+    <title>Sanit-Eticket Tactile</title>
     <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+EAN13+Text&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f7f6; display: flex; flex-direction: column; align-items: center; }
-        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-        select, input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
-        button { width: 100%; padding: 15px; background: #27ae60; color: white; border: none; font-weight: bold; cursor: pointer; }
+        body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 20px; text-align: center; }
+        .container { max-width: 800px; margin: auto; }
+        h1 { color: #2c3e50; }
         
-        /* Étiquette */
-        #etiquette-section { display: none; margin-top: 20px; background: white; border: 2px solid black; padding: 15px; width: 300px; text-align: center; }
-        .barcode { font-family: 'Libre Barcode EAN13 Text'; font-size: 75px; }
+        /* Grille de vignettes */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 20px; }
+        .vignette { 
+            background: white; padding: 30px 10px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            cursor: pointer; font-weight: bold; font-size: 1.1em; transition: 0.2s; border: 2px solid transparent;
+        }
+        .vignette:hover { transform: translateY(-5px); border-color: #3498db; }
+        .category-vignette { background: #3498db; color: white; }
+        .product-vignette { background: #27ae60; color: white; }
+
+        /* Configuration finale */
+        #config-zone { display: none; background: white; padding: 20px; border-radius: 12px; margin-top: 20px; }
+        input { font-size: 1.2em; padding: 10px; width: 80px; text-align: center; }
+        .btn-retour { background: #95a5a6; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; }
+
+        /* Étiquettes pour l'impression */
+        #print-area { display: none; }
+        .etiquette { 
+            width: 300px; height: auto; border: 1px solid black; padding: 10px; 
+            margin: 10px auto; page-break-after: always; text-align: center; background: white;
+        }
+        .barcode { font-family: 'Libre Barcode EAN13 Text'; font-size: 70px; margin: 5px 0; }
+        
+        @media print {
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area { position: absolute; left: 0; top: 0; width: 100%; display: block !important; }
+            .no-print { display: none; }
+        }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>Générer Étiquette Stock</h2>
+<div class="container no-print">
+    <h1>Sanit-Eticket 🏷️</h1>
+    <button id="btn-back" class="btn-retour" style="display:none;" onclick="showCategories()">← Retour aux familles</button>
     
-    <label>Sélectionner le produit :</label>
-    <select id="select-produit" onchange="updateEAN()">
-        <option value="">-- Charger les produits... --</option>
-    </select>
-
-    <input id="poids" placeholder="Poids net (kg)">
-    <input id="dlc" type="number" placeholder="DLC (jours)">
-    <input id="operateur" placeholder="Initiales">
-    
-    <button onclick="genererEtiquette()">VALIDER & ENREGISTRER</button>
-</div>
-
-<div id="etiquette-section">
-    <div id="view-nom" style="font-weight: bold; font-size: 1.2em;"></div>
-    <div id="view-barcode" class="barcode"></div>
-    <div id="view-ean-text" style="margin-top:-10px; font-family: monospace;"></div>
-    <div style="text-align: left; margin-top: 10px; font-size: 0.9em;">
-        <div>LOT : <span id="view-lot"></span></div>
-        <div>POIDS : <span id="view-poids"></span> kg</div>
-        <div style="background: black; color: white; padding: 5px; margin-top: 5px;">
-            DLC : <span id="view-dlc"></span>
+    <div id="display-zone" class="grid">
         </div>
+
+    <div id="config-zone">
+        <h2 id="selected-product-name"></h2>
+        <p>Combien d'étiquettes à imprimer ?</p>
+        <input type="number" id="nb-labels" value="1" min="1">
+        <br><br>
+        <button onclick="preparerImpression()" style="background:#2ecc71; color:white; border:none; padding:15px 30px; font-size:1.1em; border-radius:8px; cursor:pointer;">GÉNÉRER LES ÉTIQUETTES</button>
     </div>
 </div>
+
+<div id="print-area"></div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -54,73 +69,96 @@
         authDomain: "sanit-eticket.firebaseapp.com",
         projectId: "sanit-eticket",
         storageBucket: "sanit-eticket.firebasestorage.app",
-        messagingSenderId: "819999183475",
         appId: "1:819999183475:web:becb59ecfb8e7ac185d006"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 1. CHARGER LES PRODUITS DEPUIS FIREBASE AU DÉMARRAGE
-    function chargerReferentiel() {
-        const select = document.getElementById("select-produit");
+    let catalogue = [];
+    let produitSelectionne = null;
+
+    // 1. Charger les produits et extraire les catégories
+    async function initApp() {
+        const snapshot = await db.collection("produits_referentiel").get();
+        catalogue = snapshot.docs.map(doc => doc.data());
+        showCategories();
+    }
+
+    // 2. Afficher les familles (Vignettes Bleues)
+    function showCategories() {
+        document.getElementById("btn-back").style.display = "none";
+        document.getElementById("config-zone").style.display = "none";
+        const zone = document.getElementById("display-zone");
+        zone.style.display = "grid";
+        zone.innerHTML = "";
+
+        const categories = [...new Set(catalogue.map(p => p.categorie))];
         
-        // On va chercher dans la collection "produits_referentiel"
-        db.collection("produits_referentiel").get().then((querySnapshot) => {
-            select.innerHTML = '<option value="">-- Choisir un produit --</option>';
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                let opt = document.createElement('option');
-                opt.value = data.ean13; // On stocke l'EAN dans la valeur
-                opt.innerHTML = data.nom;
-                opt.dataset.dlc = data.dlc_par_defaut || 3; // On peut stocker la DLC par défaut
-                select.appendChild(opt);
-            });
+        categories.forEach(cat => {
+            const div = document.createElement("div");
+            div.className = "vignette category-vignette";
+            div.innerText = cat;
+            div.onclick = () => showProducts(cat);
+            zone.appendChild(div);
         });
     }
 
-    function updateEAN() {
-        const select = document.getElementById("select-produit");
-        const selectedOption = select.options[select.selectedIndex];
-        if(selectedOption.dataset.dlc) {
-            document.getElementById("dlc").value = selectedOption.dataset.dlc;
+    // 3. Afficher les produits d'une famille (Vignettes Vertes)
+    function showProducts(cat) {
+        document.getElementById("btn-back").style.display = "inline-block";
+        const zone = document.getElementById("display-zone");
+        zone.innerHTML = "";
+
+        const produits = catalogue.filter(p => p.categorie === cat);
+        
+        produits.forEach(prod => {
+            const div = document.createElement("div");
+            div.className = "vignette product-vignette";
+            div.innerText = prod.nom;
+            div.onclick = () => selectProduct(prod);
+            zone.appendChild(div);
+        });
+    }
+
+    // 4. Sélection finale
+    function selectProduct(prod) {
+        produitSelectionne = prod;
+        document.getElementById("display-zone").style.display = "none";
+        document.getElementById("config-zone").style.display = "block";
+        document.getElementById("selected-product-name").innerText = prod.nom;
+    }
+
+    // 5. Générer les X étiquettes
+    function preparerImpression() {
+        const nb = document.getElementById("nb-labels").value;
+        const printArea = document.getElementById("print-area");
+        printArea.innerHTML = "";
+
+        const today = new Date().toLocaleDateString('fr-FR');
+        const dlcDate = new Date();
+        dlcDate.setDate(dlcDate.getDate() + 20); // DLC à 20 jours
+        const dlcString = dlcDate.toLocaleDateString('fr-FR');
+        
+        const lot = produitSelectionne.nom.substring(0,3).toUpperCase() + new Date().getDate() + (new Date().getMonth()+1);
+
+        for (let i = 0; i < nb; i++) {
+            printArea.innerHTML += `
+                <div class="etiquette">
+                    <div style="font-weight:bold; font-size:1.2em; border-bottom:1px solid black; padding-bottom:5px; margin-bottom:5px;">${produitSelectionne.nom.toUpperCase()}</div>
+                    <div class="barcode">${produitSelectionne.ean13}</div>
+                    <div style="font-family:monospace; margin-top:-10px;">${produitSelectionne.ean13}</div>
+                    <div style="text-align:left; font-size:0.85em; margin-top:10px;">
+                        <div><b>Date Fab / Sous-vide :</b> ${today}</div>
+                        <div style="color:red;"><b>DLC (20j) :</b> ${dlcString}</div>
+                        <div><b>LOT :</b> ${lot}</div>
+                    </div>
+                </div>
+            `;
         }
+        window.print();
     }
 
-    function genererEtiquette() {
-        const select = document.getElementById("select-produit");
-        const eanStock = select.value;
-        const nomProduit = select.options[select.selectedIndex].text;
-        const poids = document.getElementById("poids").value;
-        const dlcDays = parseInt(document.getElementById("dlc").value);
-        
-        if(!eanStock) return alert("Sélectionne un produit !");
-
-        const dateDLC = new Date();
-        dateDLC.setDate(dateDLC.getDate() + dlcDays);
-
-        const lot = nomProduit.substring(0,3).toUpperCase() + new Date().getDate() + (new Date().getMonth()+1);
-
-        // Affichage
-        document.getElementById("view-nom").innerText = nomProduit;
-        document.getElementById("view-barcode").innerText = eanStock;
-        document.getElementById("view-ean-text").innerText = eanStock;
-        document.getElementById("view-lot").innerText = lot;
-        document.getElementById("view-poids").innerText = poids;
-        document.getElementById("view-dlc").innerText = dateDLC.toLocaleDateString('fr-FR');
-        document.getElementById("etiquette-section").style.display = "block";
-
-        // Enregistrement de la production (mouvement de stock)
-        db.collection("productions").add({
-            produit: nomProduit,
-            ean13: eanStock,
-            poids: poids,
-            date: new Date(),
-            dlc: dateDLC
-        });
-    }
-
-    chargerReferentiel();
+    initApp();
 </script>
 </body>
 </html>
